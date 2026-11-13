@@ -1,0 +1,7 @@
+{
+  "model": "claude-fable-5-2",
+  "effortLevel": "medium",
+  "env": {
+    "CLAUDE_CODE_SUBAGENT_MODEL": "opus"
+  }
+}
