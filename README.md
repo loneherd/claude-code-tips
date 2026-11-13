@@ -388,12 +388,12 @@ Long sessions end with reboots, context limits, or "I'll finish tomorrow." `/wra
 
 ```bash
 mkdir -p ~/.claude/skills/wrap
-curl -o ~/.claude/skills/wrap/SKILL.md https://raw.githubusercontent.com/wickedhardflip/claude-code-tips/master/skills/wrap/SKILL.md
+curl -o ~/.claude/skills/wrap/SKILL.md https://raw.githubusercontent.com/loneherd/claude-code-tips/master/skills/wrap/SKILL.md
 ```
 
 ```powershell
 New-Item -ItemType Directory -Force "$HOME\.claude\skills\wrap" | Out-Null
-Invoke-WebRequest https://raw.githubusercontent.com/wickedhardflip/claude-code-tips/master/skills/wrap/SKILL.md -OutFile "$HOME\.claude\skills\wrap\SKILL.md"
+Invoke-WebRequest https://raw.githubusercontent.com/loneherd/claude-code-tips/master/skills/wrap/SKILL.md -OutFile "$HOME\.claude\skills\wrap\SKILL.md"
 ```
 
 Then type `/wrap` at the end of a session. The skill sets `disable-model-invocation: true`, so it only runs when you ask for it.
@@ -432,7 +432,7 @@ Once you have answered something, treat that answer as done. Don't go back over 
 
 ```text
 Add the "Task Persistence", "Agentic Run Behavior", and "Token Efficiency" sections from
-section 11 of https://github.com/wickedhardflip/claude-code-tips to my user-level
+section 11 of https://github.com/loneherd/claude-code-tips to my user-level
 CLAUDE.md (~/.claude/CLAUDE.md). Create the file if it doesn't exist. Show me the exact
 text before you write it, and don't change anything else.
 ```
@@ -441,7 +441,7 @@ To undo, delete the three sections.
 
 ### 12. Mods: Info That Doesn't Scroll Away
 
-Mods are small plugins of function hooks that run inside Claude Code and put information in a fixed spot: the status line, or a band above the prompt. Three of ours are public in [claude-code-mods](https://github.com/wickedhardflip/claude-code-mods) (MIT), each written with Claude's help.
+Mods are small plugins of function hooks that run inside Claude Code and put information in a fixed spot: the status line, or a band above the prompt. Three of ours are public in [claude-code-mods](https://github.com/loneherd/claude-code-mods) (MIT), each written with Claude's help.
 
 | Mod | What it shows | Where | Tokens? |
 | --- | --- | --- | --- |
@@ -456,7 +456,7 @@ Mods are small plugins of function hooks that run inside Claude Code and put inf
 **Try one for a session** (nothing saved):
 
 ```powershell
-git clone https://github.com/wickedhardflip/claude-code-mods.git
+git clone https://github.com/loneherd/claude-code-mods.git
 claude --plugin-dir .\claude-code-mods\subagent-models
 ```
 
@@ -522,7 +522,7 @@ Understand the task and trace the real flow first; the ladder runs after that, n
 
 ```text
 Add the "Code Style: Lazy Senior Dev" section from section 13 of
-https://github.com/wickedhardflip/claude-code-tips to my user-level CLAUDE.md
+https://github.com/loneherd/claude-code-tips to my user-level CLAUDE.md
 (~/.claude/CLAUDE.md). Show me the exact text before you write it, and don't
 change anything else.
 ```
@@ -580,7 +580,7 @@ No mail assistant? Export 50 or so sent emails to text files instead. Ticket not
 
 ```text
 Here is an analysis of my sent mail. Turn it into a voice guide memory using the template at
-https://github.com/wickedhardflip/claude-code-tips/blob/master/templates/voice-guide.md.
+https://github.com/loneherd/claude-code-tips/blob/master/templates/voice-guide.md.
 Before saving anything:
 - Show me the draft rules.
 - List any of my existing memories or CLAUDE.md rules that conflict with it.
@@ -695,7 +695,7 @@ Change `deploy@prod-host` and the record path to yours. Keep the record outside 
 **Try it:** paste this into Claude Code in your repo:
 
 ```text
-Read section 17 of https://github.com/wickedhardflip/claude-code-tips. Add the same three
+Read section 17 of https://github.com/loneherd/claude-code-tips. Add the same three
 deploy checks and the prod record to my deploy script. Show me the diff before you write
 it, keep everything else the same, and test each rule (clean tree, on main, contains prod)
 without running a real deploy.
@@ -845,7 +845,7 @@ claude-code-tips/
 
 - [Claude Code Docs](https://docs.anthropic.com/en/docs/claude-code) — Official documentation
 - [Claude Code GitHub](https://github.com/anthropics/claude-code) — Report issues, check releases
-- [claude-code-mods](https://github.com/wickedhardflip/claude-code-mods) — The mods from section 12
+- [claude-code-mods](https://github.com/loneherd/claude-code-mods) — The mods from section 12
 - [ponytail](https://github.com/DietrichGebert/ponytail) — Source of the ladder in section 13
 
 
