@@ -797,7 +797,7 @@ anything that needs a decision. Change nothing beyond what an item says without 
 
 ### 21. Fable Plans, Opus Builds, Haiku Fetches
 
-Fable 5.2 is the strongest planner and reviewer, and it costs about 2.5x Opus 5.5 per token. Put it in charge and let cheaper models do the reading and typing. The catch: subagents inherit the main model unless told otherwise, so a Fable session quietly runs every subagent on Fable too.
+Fable 5.2 is the strongest planner and reviewer, and it costs about 2.5x Opus 5.5 per token. Put it in charge and let cheaper models do the reading and typing. This tip is adapted from a [setup list by @suraj_sharma14](https://x.com/suraj_sharma14/status/2120630145505738815) on X. The catch: subagents inherit the main model unless told otherwise, so a Fable session quietly runs every subagent on Fable too.
 
 **The setup:**
 
@@ -904,6 +904,7 @@ claude-code-tips/
 - [Claude Code GitHub](https://github.com/anthropics/claude-code) — Report issues, check releases
 - [claude-code-mods](https://github.com/loneherd/claude-code-mods) — The mods from section 12
 - [ponytail](https://github.com/DietrichGebert/ponytail) — Source of the ladder in section 13
+- [@suraj_sharma14 on X](https://x.com/suraj_sharma14/status/2120630145505738815) — Source of the Fable setup list in section 21
 - [Sub-agents docs](https://docs.anthropic.com/en/docs/claude-code/sub-agents) — `.claude/agents/` files and the `model:` field (sections 21-22)
 
 
