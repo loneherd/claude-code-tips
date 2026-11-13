@@ -36,6 +36,9 @@ These aren't just documentation repackaged. They're patterns we've developed and
   - [18. Code-Rendered Video Workflow](#18-code-rendered-video-workflow)
   - [19. `/tokenwatch`: Measure Token Burn, Don't Guess](#19-tokenwatch-measure-token-burn-dont-guess)
   - [20. Weekly Maintenance: A Self-Renewing Check-In](#20-weekly-maintenance-a-self-renewing-check-in)
+- **Fable**
+  - [21. Fable Plans, Opus Builds, Haiku Fetches](#21-fable-plans-opus-builds-haiku-fetches)
+  - [22. `/fable-setup`: A Fable Workspace in One Command](#22-fable-setup-a-fable-workspace-in-one-command)
 - [Quick Reference](#quick-reference)
 - [Resources](#resources)
 
@@ -790,6 +793,59 @@ anything that needs a decision. Change nothing beyond what an item says without 
 
 ---
 
+## Fable
+
+### 21. Fable Plans, Opus Builds, Haiku Fetches
+
+Fable 5.2 is the strongest planner and reviewer, and it costs about 2.5x Opus 5.5 per token. Put it in charge and let cheaper models do the reading and typing. The catch: subagents inherit the main model unless told otherwise, so a Fable session quietly runs every subagent on Fable too.
+
+**The setup:**
+
+1. Open Claude Code, type `/model` and pick Fable 5.2.
+2. Set `CLAUDE_CODE_SUBAGENT_MODEL` (to `opus`) so new subagents don't default to Fable.
+3. Save each subagent in `.claude/agents/` with its own `model:` field:
+   - log reading and file search on **Haiku**
+   - scoped fixes and test writing on **Sonnet**
+   - planned multi-file build work on **Opus**
+4. Run `/init` first in a repo with no `CLAUDE.md`, so it writes one about your repo.
+5. Shift+Tab into plan mode before it touches a file, then give it the big job.
+6. Start at medium effort. Go high only when it struggles.
+7. Run `/tasks` to see which model every subagent is on.
+8. `/compact` when the context gets heavy, `/clear` between jobs.
+
+**The one rule that matters:** edits and judgment calls stay on the main model, never the cheap one. Haiku is great at "find every caller of X" and bad at deciding whether X should change.
+
+```markdown
+---
+name: fetcher
+description: Read-only lookups - reading logs, finding files, "where is X used". Returns facts with file:line.
+tools: Read, Grep, Glob, Bash
+model: haiku
+---
+```
+
+**Why it works:** most of a big job is reading, and reading is where the tokens go. The lead only sees short summaries, so its context stays small and its turns stay cheap, while the expensive model spends its tokens on the plan and the review.
+
+---
+
+### 22. `/fable-setup`: A Fable Workspace in One Command
+
+Doing section 21 by hand every time gets old, and settings you set in one session don't follow you to the next. `/fable-setup` builds a subfolder that carries all of it, so any session started there is already set up.
+
+**Install:** copy [`skills/fable-setup/`](skills/fable-setup/) (the `SKILL.md` and its `templates/` folder) to `~/.claude/skills/fable-setup/`. Fill in your memory folder path once in `templates/CLAUDE.md`.
+
+**Run it:** `/fable-setup <name> [repo]`. It creates `<name>/` with:
+- `.claude/settings.json`: Fable 5.2 main, effort medium, `CLAUDE_CODE_SUBAGENT_MODEL=opus`
+- `.claude/agents/`: `fetcher` (Haiku, read only), `fixer` (Sonnet, scoped fixes and tests), `builder` (Opus, planned build work)
+- `CLAUDE.md`: Fable leads and reviews every diff, agents get self-contained briefs and separate file scopes, they write details to `findings/` and return short summaries, and parallel agents never build in a shared tree
+- `repo/` (optional): a git worktree of the repo on its own `fable/<name>` branch, so the main checkout is never touched
+
+Then open a new terminal in the folder, run `claude`, check the status line says Fable 5.2, Shift+Tab into plan mode, and give it the job.
+
+**Why a folder:** project settings and agents load from the folder the session starts in. A new folder also starts with no memory, so the template points the session at your main memory.
+
+---
+
 ## Quick Reference
 
 ### Session Management
@@ -828,6 +884,7 @@ claude-code-tips/
 ├── skills/
 │   ├── wrap/SKILL.md      # /wrap session checkpoint skill
 │   ├── delegate/SKILL.md  # /delegate agent routing + management skill
+│   ├── fable-setup/       # /fable-setup workspace skill + templates (section 22)
 │   └── tokenwatch/SKILL.md  # /tokenwatch token usage check (section 19)
 ├── templates/
 │   ├── voice-guide.md     # Voice guide memory template (section 14)
@@ -847,6 +904,7 @@ claude-code-tips/
 - [Claude Code GitHub](https://github.com/anthropics/claude-code) — Report issues, check releases
 - [claude-code-mods](https://github.com/loneherd/claude-code-mods) — The mods from section 12
 - [ponytail](https://github.com/DietrichGebert/ponytail) — Source of the ladder in section 13
+- [Sub-agents docs](https://docs.anthropic.com/en/docs/claude-code/sub-agents) — `.claude/agents/` files and the `model:` field (sections 21-22)
 
 
 ---
