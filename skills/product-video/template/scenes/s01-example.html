@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>s01 Example - product video</title>
+<!-- Example scene. A real scene links the product's CSS from ../site-css/ here, in the order its layout loads it,
+     and copies the markup shapes from the product's own view. This one uses inline styles so it runs on its own. -->
+<link rel="stylesheet" href="../kit/stage.css">
+<style>
+  #world { font-family: "Segoe UI", system-ui, sans-serif; color: #1d2329; }
+  .app { position: absolute; inset: 0; display: flex; background: #f1f4f6; }
+  .side { width: 260px; background: #1f2a36; color: #dfe6ee; padding: 28px 20px; }
+  .side h2 { margin: 0 0 28px; font-size: 24px; }
+  .side a { display: block; padding: 10px 14px; border-radius: 8px; color: #dfe6ee; text-decoration: none; font-size: 17px; }
+  .side a.on { background: #34475c; color: #fff; font-weight: 600; }
+  .main { flex: 1; padding: 48px 60px; }
+  .main h1 { margin: 0 0 28px; font-size: 34px; }
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .card { background: #fff; border-radius: 14px; padding: 26px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .card h3 { margin: 0 0 10px; font-size: 18px; color: #4a5866; font-weight: 600; }
+  .card .num { font-size: 44px; font-weight: 700; }
+  .pill { display: inline-block; margin-top: 12px; padding: 4px 12px; border-radius: 999px; font-size: 14px; font-weight: 700; }
+  .pill.ok { background: #d7f2df; color: #0d5b26; }
+  .pill.warn { background: #fde7c4; color: #6b3b00; }
+  .btn { margin-top: 32px; padding: 14px 26px; border: 0; border-radius: 10px; background: #1f5fae; color: #fff; font-size: 18px; font-weight: 600; }
+  .btn.pressed { background: #174a88; }
+  .toast { position: absolute; right: 60px; top: 48px; padding: 16px 22px; border-radius: 10px; background: #0d5b26; color: #fff; font-size: 18px; font-weight: 600; opacity: 0; }
+</style>
+</head>
+<body>
+<div id="stage"><div id="world">
+  <div class="app">
+    <nav class="side"><h2>Sample App</h2><a class="on">Dashboard</a><a>Reports</a><a>Settings</a></nav>
+    <main class="main">
+      <h1>Dashboard</h1>
+      <div class="cards">
+        <div class="card" id="c1"><h3>Open tickets</h3><div class="num">12</div><span class="pill warn">3 overdue</span></div>
+        <div class="card" id="c2"><h3>Devices online</h3><div class="num">248</div><span class="pill ok">Healthy</span></div>
+        <div class="card" id="c3"><h3>Last backup</h3><div class="num">02:00</div><span class="pill ok">Completed</span></div>
+      </div>
+      <button class="btn" id="refresh">Refresh data</button>
+    </main>
+    <div class="toast" id="toast">Data refreshed</div>
+  </div>
+</div></div>
+<script src="../kit/stage.js"></script>
+<script>
+var BEATS = { cards: [0.3, 1.2], zoomIn: [1.6, 2.6], cursorIn: 5.8, ring: [6.6, 7.9], click: 7.4, toast: [7.6, 8.0], zoomOut: [9.8, 10.8], end: 11.2 };
+var CAPTIONS = [
+  { t0: 0.3, t1: 6.6, text: 'The dashboard shows open tickets, devices online and the last backup at a glance.' },
+  { t0: 6.8, t1: 10.8, text: 'Click Refresh data to pull the latest numbers.' }
+];
+
+var anim = Stage.anim([
+  { el: '#c1', t: [0.3, 0.9], from: { opacity: 0, y: 16 }, to: { opacity: 1, y: 0 }, ease: 'out' },
+  { el: '#c2', t: [0.45, 1.05], from: { opacity: 0, y: 16 }, to: { opacity: 1, y: 0 }, ease: 'out' },
+  { el: '#c3', t: [0.6, 1.2], from: { opacity: 0, y: 16 }, to: { opacity: 1, y: 0 }, ease: 'out' },
+  { el: '#toast', t: [BEATS.toast[0], BEATS.toast[1]], from: { opacity: 0, y: -10 }, to: { opacity: 1, y: 0 }, ease: 'out' }
+]);
+var cur = Stage.cursor([{ t: BEATS.cursorIn, x: 1500, y: 800 }, { t: BEATS.click, el: '#refresh', click: true }], { showAt: BEATS.cursorIn - 0.2 });
+
+function seek(t) {
+  anim(t);
+  document.getElementById('refresh').classList.toggle('pressed', t >= BEATS.click && t < BEATS.click + 0.2);
+  Stage.camera(t, [
+    { t: BEATS.zoomIn[0], zoom: 1, x: 0, y: 0 },
+    { t: BEATS.zoomIn[1], zoom: 1.2, x: 1090, y: 300 },
+    { t: BEATS.zoomOut[0], zoom: 1.2, x: 1090, y: 300 },
+    { t: BEATS.zoomOut[1], zoom: 1, x: 0, y: 0 }
+  ]);
+  Stage.ring(t, '#refresh', { t0: BEATS.ring[0], t1: BEATS.ring[1] });
+  cur(t);
+}
+Stage.boot({ id: 's01', title: 'Example dashboard', duration: BEATS.end, captions: CAPTIONS, seek: seek });
+</script>
+</body>
+</html>
