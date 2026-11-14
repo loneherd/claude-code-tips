@@ -1,0 +1,133 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>encode workbench</title>
+<!-- Loaded from file:// by render.mjs in its own tab (WebCodecs needs a secure origin; file:// counts, about:blank does not).
+     It receives screenshots as base64 strings over the DevTools protocol, decodes them, and runs VideoEncoder.
+     It also builds contact sheets and pixel hashes. Nothing here touches the scene page. -->
+<script>
+'use strict';
+const enc = { video: [], vdesc: null, err: null, n: 0 };
+let ve = null, cfg = null;
+
+function b64ToBlob(b64, mime) {
+  const bin = atob(b64), u = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+  return new Blob([u], { type: mime });
+}
+const toBitmap = (b64, mime) => createImageBitmap(b64ToBlob(b64, mime || 'image/png'));
+const b64 = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
+
+window.__init = async c => {
+  cfg = Object.assign({ codec: 'avc1.640028', width: 1920, height: 1080, fps: 30, bitrate: 4.5e6, keyEvery: 60 }, c);
+  enc.video = []; enc.vdesc = null; enc.err = null; enc.n = 0; enc.base = 0; chain = Promise.resolve();
+  const conf = { codec: cfg.codec, width: cfg.width, height: cfg.height, bitrate: cfg.bitrate, bitrateMode: cfg.bitrateMode || 'variable',
+                 framerate: cfg.fps, latencyMode: 'quality', avc: { format: 'avc' } };
+  const sup = await VideoEncoder.isConfigSupported(conf);
+  if (!sup.supported) throw new Error('VideoEncoder config not supported: ' + JSON.stringify(conf));
+  ve = new VideoEncoder({
+    output: (ch, meta) => {
+      const d = new Uint8Array(ch.byteLength); ch.copyTo(d);
+      enc.video.push({ d, key: ch.type === 'key', ts: ch.timestamp });
+      if (meta?.decoderConfig?.description) {
+        const ds = meta.decoderConfig.description;
+        enc.vdesc = new Uint8Array(ds instanceof ArrayBuffer ? ds : ds.buffer.slice(ds.byteOffset, ds.byteOffset + ds.byteLength));
+      }
+    },
+    error: e => { enc.err = String(e); }
+  });
+  ve.configure(conf);
+  return JSON.stringify({ ok: true, config: conf });
+};
+
+// Encode one frame. n = global frame index (timestamp and keyframe cadence come from it).
+// Calls are chained, so the driver may send several without waiting and they still reach the encoder in call order.
+let chain = Promise.resolve();
+window.__frame = (data, mime, n) => (chain = chain.then(() => encodeOne(data, mime, n)));
+async function encodeOne(data, mime, n) {
+  if (enc.err) throw new Error(enc.err);
+  if (n !== enc.n + enc.base) throw new Error(`frame ${n} arrived out of order (expected ${enc.n + enc.base})`);
+  const bmp = await toBitmap(data, mime);
+  if (bmp.width !== cfg.width || bmp.height !== cfg.height) { bmp.close(); throw new Error(`frame ${n} is ${bmp.width}x${bmp.height}, expected ${cfg.width}x${cfg.height}`); }
+  const f = new VideoFrame(bmp, { timestamp: Math.round(n * 1e6 / cfg.fps), duration: Math.round(1e6 / cfg.fps) });
+  bmp.close();
+  ve.encode(f, { keyFrame: n % cfg.keyEvery === 0 });
+  f.close();
+  enc.n++;
+  while (ve.encodeQueueSize > 4) await new Promise(r => setTimeout(r, 2));
+  return enc.n;
+}
+
+window.__finish = async () => {
+  await chain; await ve.flush(); ve.close(); ve = null;
+  return JSON.stringify({ submitted: enc.n, chunks: enc.video.length, bytes: enc.video.reduce((a, s) => a + s.d.length, 0), err: enc.err });
+};
+window.__meta = () => JSON.stringify({ vdesc: enc.vdesc ? b64(enc.vdesc) : null, nv: enc.video.length });
+window.__take = (i0, n) => JSON.stringify(enc.video.slice(i0, i0 + n).map(s => ({ ts: s.ts, key: s.key, d: b64(s.d) })));
+window.__release = () => { enc.video = []; return true; };
+
+// FNV-1a over every RGBA byte of the decoded image.
+window.__pixhash = async (data, mime) => {
+  const bmp = await toBitmap(data, mime), c = new OffscreenCanvas(bmp.width, bmp.height), g = c.getContext('2d');
+  g.drawImage(bmp, 0, 0); const px = g.getImageData(0, 0, bmp.width, bmp.height).data; bmp.close();
+  let h = 2166136261; for (let i = 0; i < px.length; i++) { h ^= px[i]; h = Math.imul(h, 16777619); }
+  return (h >>> 0).toString(16).padStart(8, '0') + ' ' + c.width + 'x' + c.height;
+};
+
+// Read the selftest's frame-number strip: `bits` cells of `cell` px starting at (x0, y). White = 1.
+window.__readStrip = async (data, mime, x0, y, cell, bits) => {
+  const bmp = await toBitmap(data, mime), c = new OffscreenCanvas(bmp.width, bmp.height), g = c.getContext('2d');
+  g.drawImage(bmp, 0, 0); bmp.close();
+  let v = 0; for (let b = 0; b < bits; b++) { const p = g.getImageData(x0 + b * cell + (cell >> 1), y + (cell >> 1), 1, 1).data; if (p[0] > 128) v |= (1 << b); }
+  return v;
+};
+
+// Contact sheet: tiles = [{ data, mime, label }], returns a PNG data URL.
+window.__contact = async (tiles, cols, tw) => {
+  const th = Math.round(tw * 9 / 16), bar = 30, rows = Math.ceil(tiles.length / cols);
+  const c = document.createElement('canvas'); c.width = cols * tw + (cols + 1) * 6; c.height = rows * (th + bar) + (rows + 1) * 6;
+  const g = c.getContext('2d'); g.fillStyle = '#202020'; g.fillRect(0, 0, c.width, c.height);
+  for (let i = 0; i < tiles.length; i++) {
+    const x = 6 + (i % cols) * (tw + 6), y = 6 + Math.floor(i / cols) * (th + bar + 6);
+    const bmp = await toBitmap(tiles[i].data, tiles[i].mime);
+    g.imageSmoothingQuality = 'high'; g.drawImage(bmp, x, y, tw, th); bmp.close();
+    g.fillStyle = '#000'; g.fillRect(x, y + th, tw, bar);
+    g.fillStyle = '#ffd400'; g.font = 'bold 18px Consolas, monospace'; g.textBaseline = 'middle'; g.fillText(tiles[i].label, x + 8, y + th + bar / 2);
+  }
+  return c.toDataURL('image/png');
+};
+// ---- narration: 16-bit interleaved PCM in, AAC-LC out (render.mjs "audio" mode)
+const aud = { pcm: [], chunks: [], desc: null, err: null };
+window.__audioPcm = b64s => { const bin = atob(b64s), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); aud.pcm.push(new Int16Array(u.buffer)); return true; };
+window.__audioEncode = async (sr, ch, bitrate) => {
+  let total = 0; for (const p of aud.pcm) total += p.length;
+  const all = new Int16Array(total); let o = 0; for (const p of aud.pcm) { all.set(p, o); o += p.length; } aud.pcm = [];
+  const ae = new AudioEncoder({
+    output: (c, meta) => { const d = new Uint8Array(c.byteLength); c.copyTo(d); aud.chunks.push({ d, ts: c.timestamp });
+      const ds = meta && meta.decoderConfig && meta.decoderConfig.description;
+      if (ds && !aud.desc) aud.desc = ds instanceof ArrayBuffer ? new Uint8Array(ds.slice(0)) : new Uint8Array(ds.buffer.slice(ds.byteOffset, ds.byteOffset + ds.byteLength)); },
+    error: e => { aud.err = String(e); } });
+  ae.configure({ codec: 'mp4a.40.2', sampleRate: sr, numberOfChannels: ch, bitrate });
+  const frames = all.length / ch, STEP = 1024 * 16;
+  for (let i = 0; i < frames; i += STEP) {
+    const n = Math.min(STEP, frames - i);
+    ae.encode(new AudioData({ format: 's16', sampleRate: sr, numberOfFrames: n, numberOfChannels: ch, timestamp: Math.round(i / sr * 1e6), data: all.subarray(i * ch, (i + n) * ch) }));
+    while (ae.encodeQueueSize > 8) await new Promise(r => setTimeout(r, 2));
+  }
+  await ae.flush(); ae.close();
+  return JSON.stringify({ chunks: aud.chunks.length, err: aud.err, desc: aud.desc ? b64(aud.desc) : null, seconds: frames / sr });
+};
+window.__audioTake = (i0, n) => JSON.stringify(aud.chunks.slice(i0, i0 + n).map(s => ({ ts: s.ts, d: b64(s.d) })));
+// ---- decode any audio file Chrome can read (mp3, m4a, wav, mp4 with sound) to 48 kHz stereo 16-bit PCM (render.mjs "decode" mode)
+const dec = { parts: [], pcm: null };
+window.__decPart = b64s => { const bin = atob(b64s), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); dec.parts.push(u); return true; };
+window.__decRun = async () => {
+  let n = 0; for (const p of dec.parts) n += p.length; const all = new Uint8Array(n); let o = 0; for (const p of dec.parts) { all.set(p, o); o += p.length; } dec.parts = [];
+  const buf = await new OfflineAudioContext(2, 1, 48000).decodeAudioData(all.buffer);
+  const L = buf.getChannelData(0), R = buf.numberOfChannels > 1 ? buf.getChannelData(1) : L, out = new Int16Array(buf.length * 2);
+  for (let i = 0; i < buf.length; i++) { out[2 * i] = Math.max(-1, Math.min(1, L[i])) * 32767; out[2 * i + 1] = Math.max(-1, Math.min(1, R[i])) * 32767; }
+  dec.pcm = new Uint8Array(out.buffer);
+  return JSON.stringify({ seconds: buf.duration, channels: buf.numberOfChannels, sampleRate: buf.sampleRate, bytes: dec.pcm.length });
+};
+window.__decTake = (i0, n) => b64(dec.pcm.subarray(i0, i0 + n));
+window.__ready = true;
+</script>

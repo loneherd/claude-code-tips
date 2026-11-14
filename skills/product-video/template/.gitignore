@@ -1,0 +1,5 @@
+out/
+kokoro/models/
+kokoro/venv/
+site-css/
+__pycache__/

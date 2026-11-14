@@ -1,0 +1,92 @@
+/* Product video: stage kit styles.
+   Load AFTER the site CSS (site-css/...) so these rules win where they must.
+   Layers inside #stage, bottom to top:
+     #world     the scene content; the camera transforms this one element
+       #fx      highlight rings and spotlights (inside world, so they follow the camera)
+     #hud       fake cursor and click rings (stage space, not zoomed)
+     #caption   caption bar (stage space, always on top) */
+
+/* Fonts: if the product loads a web font from a CDN, copy the font file into site-css/fonts/ and declare it
+   here with @font-face and font-display: block, so capture never waits on the network. */
+
+html, body { margin: 0; padding: 0; }
+/* Page background outside the stage is black (contract), whatever the site CSS paints on body. */
+html body.stage-page { background: #000 !important; overflow: hidden; }
+html body.stage-page::before { display: none !important; }
+
+#stage {
+  position: absolute; left: 0; top: 0;
+  width: 1920px; height: 1080px; overflow: hidden;
+  /* Set these to the product's page background, font and text colour (or its CSS variables). */
+  background: var(--stage-bg, #f1f4f6);
+  font-family: var(--stage-font, system-ui, sans-serif); color: var(--stage-text, #1d2329); font-size: var(--stage-fs, 14px);
+  transform-origin: 0 0;
+  contain: layout paint;
+}
+/* Kill switch: no wall-clock motion anywhere inside the stage. All motion comes from seek(t). */
+#stage *, #stage *::before, #stage *::after {
+  transition: none !important;
+  animation: none !important;
+  caret-color: transparent !important;
+}
+#world { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
+#fx { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; pointer-events: none; z-index: 5000; }
+#hud { position: absolute; inset: 0; pointer-events: none; z-index: 9000; }
+
+/* ---- Highlight ring and spotlight (in #fx) ---- */
+.stg-ring {
+  position: absolute; box-sizing: border-box; border-radius: 12px;
+  border: 3px solid #2f6fe0;
+  box-shadow: 0 0 0 6px rgba(47, 111, 224, .18);
+  pointer-events: none;
+}
+.stg-spot {
+  position: absolute; border-radius: 12px; pointer-events: none;
+  box-shadow: 0 0 0 4000px rgba(14, 22, 30, .52);
+}
+
+/* ---- Fake cursor (in #hud). Hotspot is the SVG tip at (0,0) of .stg-cursor. ---- */
+.stg-cursor { position: absolute; left: 0; top: 0; width: 0; height: 0; will-change: auto; }
+.stg-cursor svg { position: absolute; left: -3px; top: -2px; width: 34px; height: 42px; overflow: visible;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .35)); transform-origin: 3px 2px; }
+.stg-cursor .stg-press { position: absolute; left: -11px; top: -11px; width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(47, 111, 224, .28); border: 2px solid rgba(47, 111, 224, .85); box-sizing: border-box; opacity: 0; }
+.stg-click { position: absolute; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%;
+  border: 3px solid #2f6fe0; box-sizing: border-box; opacity: 0; }
+
+/* ---- Typing caret (kit draws its own; native carets blink on a wall clock) ---- */
+.stg-caret { position: absolute; width: 2px; background: currentColor; pointer-events: none; }
+
+/* ---- Caption bar: explicit high-contrast pair (white on near-black), never theme-derived ---- */
+#caption {
+  position: absolute; left: 0; right: 0; bottom: 44px; z-index: 9500;
+  display: flex; justify-content: center; pointer-events: none;
+}
+#caption .stg-cap {
+  max-width: 1380px; box-sizing: border-box;
+  padding: 14px 30px 16px; border-radius: 12px;
+  background: #11171d; color: #ffffff;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 34px; line-height: 1.32; font-weight: 600; letter-spacing: -.003em; text-align: center;
+  box-shadow: 0 10px 30px -8px rgba(0, 0, 0, .45);
+  /* Two lines max: longer captions must be split into more caption entries. */
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+  text-wrap: balance;
+}
+#caption[hidden] { display: none; }
+
+/* ---- Preview player (only without ?render) ---- */
+body.stage-player { background: #000; color: #e6e9ec; font: 14px "Segoe UI", system-ui, sans-serif; }
+body.stage-player #stage { display: none; }
+.stg-player { position: fixed; inset: 0; display: flex; flex-direction: column; }
+.stg-view { flex: 1; position: relative; overflow: hidden; }
+.stg-view iframe { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; border: 0; transform-origin: 0 0; background: #000; }
+/* explicit colours: site CSS may colour body with higher specificity than any body.* rule here */
+.stg-bar { flex: none; display: flex; align-items: center; gap: 14px; padding: 10px 16px; background: #15191d; border-top: 1px solid #2a3138;
+  color: #e6e9ec; font: 14px "Segoe UI", system-ui, sans-serif; }
+.stg-bar button { min-width: 74px; height: 32px; border: 0; border-radius: 6px; background: #3d4b5c; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+.stg-bar button:hover { background: #4b5c70; }
+.stg-bar input[type=range] { flex: 1; accent-color: #9fb3c8; }
+.stg-bar .stg-time { font-variant-numeric: tabular-nums; min-width: 128px; text-align: right; }
+.stg-bar label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; }
+.stg-bar .stg-title { color: #9aa6b2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 28vw; }

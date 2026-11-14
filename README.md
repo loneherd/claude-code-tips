@@ -39,6 +39,8 @@ These aren't just documentation repackaged. They're patterns we've developed and
 - **Fable**
   - [21. Fable Plans, Opus Builds, Haiku Fetches](#21-fable-plans-opus-builds-haiku-fetches)
   - [22. `/fable-setup`: A Fable Workspace in One Command](#22-fable-setup-a-fable-workspace-in-one-command)
+- **Video**
+  - [23. `/product-video`: Narrated App Walkthroughs, Nothing Installed](#23-product-video-narrated-app-walkthroughs-nothing-installed)
 - [Quick Reference](#quick-reference)
 - [Resources](#resources)
 
@@ -716,6 +718,8 @@ Claude can't output an MP4, but it can write a program that a headless browser r
 
 **Start here:** [`video/README.md`](video/README.md). Drop [`video/templates/CLAUDE.video.md`](video/templates/CLAUDE.video.md) into the project root as `CLAUDE.md` for the house rules.
 
+For a narrated walkthrough of your own web app (no Remotion, no ffmpeg), see section 23.
+
 ---
 
 ### 19. `/tokenwatch`: Measure Token Burn, Don't Guess
@@ -846,6 +850,42 @@ Then open a new terminal in the folder, run `claude`, check the status line says
 
 ---
 
+## Video
+
+### 23. `/product-video`: Narrated App Walkthroughs, Nothing Installed
+
+Screen recordings of a real app show real data, jitter, and have to be re-shot every time a line changes. This skill builds the video instead: each scene is an HTML page that draws your app from its real CSS with invented data, a fake cursor clicks and types, a camera zooms in, and every frame is a pure function of time. Change a word or a beat and re-render in minutes, byte-for-byte the same picture every time.
+
+**Tech you need:**
+
+| Piece | What it does | Install |
+|---|---|---|
+| **Node 24** | Runs the tools; drives Chrome over the DevTools protocol with its built-in WebSocket | Already there if you use Claude Code; no npm packages |
+| **Google Chrome** (or Edge) | Headless capture of each frame, then H.264 and AAC encoding through **WebCodecs** | The one you have. Set `CHROME` if it is not the standard Windows path |
+| **Python 3.12 + [kokoro-onnx](https://github.com/thewh1teagle/kokoro-onnx)** | The narration voice, offline on CPU (Kokoro 82M) | `pip install kokoro-onnx numpy` plus `kokoro-v1.0.onnx` and `voices-v1.0.bin` in `kokoro/models/` |
+| **A music track** (optional) | Soft bed under the voice, ducked under speech | Anything you are licensed to use; without one a quiet chord bed is synthesized |
+
+No ffmpeg, Puppeteer, Playwright or Remotion. A small MP4 muxer in plain Node writes the file.
+
+**Install:** copy [`skills/product-video/`](skills/product-video/) to `~/.claude/skills/product-video/`. Run `/product-video`, or just say "let's make a video of <app>".
+
+**The loop:**
+1. **Script first.** A table of scenes with the narration verbatim, about 2.6 words per second, checked against the app's real page and button names.
+2. **Build folder.** Copy `template/`, snapshot the app's CSS into `site-css/`, and run `render.mjs check tools/selftest.html` to prove the pipeline.
+3. **Scenes.** Build the first one yourself so the look is set, then parallel subagents build the rest from `SCENE_BRIEF.md`, each on its own DevTools port, each checking its own contact sheet.
+4. **Silent cut.** `render.mjs film` captures every frame (about 50 to 110 ms a frame) and `verify.mjs` decodes it back to prove it plays.
+5. **Voice.** `voice.py` records one clip per caption and flags any line that runs late against the picture. Retime and re-render until nothing is late.
+6. **Mix and mux.** `music.py` ducks the bed under speech; `render.mjs audio` adds the track without re-capturing the picture.
+
+**What makes it reliable:**
+- **A scene contract:** fixed 1920x1080 stage, no CSS animations, timers, `Date` or `Math.random`; all timing in one `BEATS` object. `render.mjs check` enforces it with 15 pass/fail checks, including "same pixels after seeking away and back".
+- **Captions are the script:** they are burned into the picture and also drive the voice timing, so picture and narration can't drift apart.
+- **Invented data only:** every name, host and ticket on screen is obviously fake ("Sample User", "DEMO-PC-014", "#10001").
+
+**Try it:** the template ships one example scene (a sample dashboard, 11 seconds). From the copied `template/` folder: `node tools/render.mjs film`, then open `out/intro-animatic.mp4`.
+
+---
+
 ## Quick Reference
 
 ### Session Management
@@ -885,6 +925,7 @@ claude-code-tips/
 │   ├── wrap/SKILL.md      # /wrap session checkpoint skill
 │   ├── delegate/SKILL.md  # /delegate agent routing + management skill
 │   ├── fable-setup/       # /fable-setup workspace skill + templates (section 22)
+│   ├── product-video/     # /product-video skill: stage kit, render/encode/voice tools, example scene (section 23)
 │   └── tokenwatch/SKILL.md  # /tokenwatch token usage check (section 19)
 ├── templates/
 │   ├── voice-guide.md     # Voice guide memory template (section 14)
@@ -904,6 +945,7 @@ claude-code-tips/
 - [Claude Code GitHub](https://github.com/anthropics/claude-code) — Report issues, check releases
 - [claude-code-mods](https://github.com/loneherd/claude-code-mods) — The mods from section 12
 - [ponytail](https://github.com/DietrichGebert/ponytail) — Source of the ladder in section 13
+- [kokoro-onnx](https://github.com/thewh1teagle/kokoro-onnx) — Offline Kokoro TTS used for the narration in section 23
 - [@suraj_sharma14 on X](https://x.com/suraj_sharma14/status/2120630145505738815) — Source of the Fable setup list in section 21
 - [Sub-agents docs](https://docs.anthropic.com/en/docs/claude-code/sub-agents) — `.claude/agents/` files and the `model:` field (sections 21-22)
 

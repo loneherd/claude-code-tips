@@ -1,0 +1,57 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>selftest</title>
+<!-- Render-tool self-test scene. Follows CONTRACT.md without the kit: fixed 1920x1080 stage, pure function of time.
+     A moving box, a large counter showing t, two captions, and a 16-cell frame-number strip (white = 1, LSB on the left)
+     at x=40, y=1000, 24 px cells, encoding round(t * 30). render.mjs `paint` reads the strip back from screenshots. -->
+<style>
+  *, *::before, *::after { transition: none !important; animation: none !important; box-sizing: border-box; }
+  html, body { margin: 0; background: #000; overflow: hidden; }
+  #stage { position: relative; width: 1920px; height: 1080px; background: #f4f6fa; overflow: hidden; font-family: 'Segoe UI', Arial, sans-serif; transform-origin: 0 0; }
+  #box { position: absolute; top: 300px; left: 0; width: 220px; height: 220px; background: #1f4e9c; border-radius: 18px; }
+  #counter { position: absolute; top: 80px; left: 80px; font: bold 120px Consolas, monospace; color: #111; }
+  #frame { position: absolute; top: 230px; left: 86px; font: 40px Consolas, monospace; color: #333; }
+  #cap { position: absolute; left: 0; right: 0; bottom: 70px; text-align: center; font-size: 44px; color: #fff; }
+  #cap span { background: #000; padding: 8px 22px; border-radius: 6px; }
+  #strip { position: absolute; left: 40px; top: 1000px; height: 24px; display: flex; }
+  #strip i { width: 24px; height: 24px; background: #000; }
+  #strip i.on { background: #fff; }
+  #ui { position: fixed; left: 0; right: 0; bottom: 0; padding: 8px; color: #ccc; font: 14px sans-serif; }
+</style>
+<div id="stage">
+  <div id="counter"></div><div id="frame"></div><div id="box"></div>
+  <div id="cap"></div><div id="strip"></div>
+</div>
+<script>
+'use strict';
+const BEATS = { duration: 4, boxFrom: 100, boxTo: 1600, cap1: [0.3, 1.8], cap2: [2.2, 3.7] };
+const FPS = 30;
+const $ = id => document.getElementById(id);
+const strip = $('strip'); for (let b = 0; b < 16; b++) strip.appendChild(document.createElement('i'));
+const ease = x => x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+const captions = [
+  { t0: BEATS.cap1[0], t1: BEATS.cap1[1], text: 'Self-test caption one.' },
+  { t0: BEATS.cap2[0], t1: BEATS.cap2[1], text: 'Self-test caption two.' }
+];
+function seek(t) {
+  t = Math.max(0, Math.min(BEATS.duration, t));
+  const n = Math.round(t * FPS);
+  $('counter').textContent = 't = ' + t.toFixed(3);
+  $('frame').textContent = 'frame ' + n;
+  const p = ease(t / BEATS.duration);
+  $('box').style.transform = `translateX(${BEATS.boxFrom + (BEATS.boxTo - BEATS.boxFrom) * p}px) rotate(${p * 180}deg)`;
+  $('box').style.background = `hsl(${Math.round(220 - 200 * p)} 65% 40%)`;
+  const c = captions.find(c => t >= c.t0 && t < c.t1);
+  $('cap').innerHTML = c ? '<span></span>' : ''; if (c) $('cap').firstChild.textContent = c.text;
+  [...strip.children].forEach((el, b) => el.className = (n >> b) & 1 ? 'on' : '');
+}
+window.SCENE = { id: 'selftest', title: 'Render tool self-test', duration: BEATS.duration, captions, seek };
+seek(0);
+if (!/[?&]render\b/.test(location.search)) {   // preview: scale to fit, scrub bar
+  const st = $('stage'), fit = () => { const s = Math.min(innerWidth / 1920, (innerHeight - 50) / 1080); st.style.transform = `scale(${s})`; document.body.style.height = innerHeight + 'px'; };
+  const ui = document.createElement('div'); ui.id = 'ui'; ui.innerHTML = '<input type="range" min="0" max="' + BEATS.duration + '" step="0.001" value="0" style="width:60%">';
+  document.body.appendChild(ui); ui.firstChild.oninput = e => seek(+e.target.value);
+  document.body.style.overflow = 'auto'; addEventListener('resize', fit); fit();
+}
+document.fonts.ready.then(() => { window.__ready = true; });
+</script>
